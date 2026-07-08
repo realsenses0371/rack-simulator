@@ -548,7 +548,11 @@ body {
   .rail-hole .hole-number { font-size: 7px; left: 2px; }
   .rail-hole::before { width: 4px; height: 4px; }
 
-  /* 设置面板 — 紧凑 */
+  /* 设置面板 — 可折叠 */
+  .panel.right .panel-header { cursor: pointer; user-select: none; }
+  .panel.right .panel-header::after { content: ' ▾'; font-size: 12px; transition: transform 0.2s; }
+  .panel.right.collapsed .panel-header::after { content: ' ▸'; }
+  .panel.right.collapsed .panel-body { display: none; }
   .setting-group { margin-bottom: 10px; }
   .setting-label { font-size: 10px; margin-bottom: 4px; }
   .height-btn { padding: 6px 4px; font-size: 12px; }
@@ -733,6 +737,16 @@ function init() {
   recalcUHeight();
   renderRack();
   updateStats();
+  // 设置面板折叠
+  const $settingsPanel = document.querySelector('.panel.right');
+  $settingsPanel.querySelector('.panel-header').addEventListener('click', () => {
+    $settingsPanel.classList.toggle('collapsed');
+  });
+  // 手机端默认折叠
+  if (window.innerWidth <= 768) {
+    $settingsPanel.classList.add('collapsed');
+  }
+
   window.addEventListener('resize', () => {
     recalcUHeight();
     renderRack();
