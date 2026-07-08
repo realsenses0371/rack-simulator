@@ -549,9 +549,26 @@ body {
   .rail-hole::before { width: 4px; height: 4px; }
 
   /* 设置面板 — 可折叠 */
-  .panel.right .panel-header { cursor: pointer; user-select: none; }
-  .panel.right .panel-header::after { content: ' ▾'; font-size: 12px; transition: transform 0.2s; }
-  .panel.right.collapsed .panel-header::after { content: ' ▸'; }
+  .panel.right .panel-header {
+    cursor: pointer;
+    user-select: none;
+    padding: 14px 16px;
+    font-size: 14px;
+    position: relative;
+  }
+  .panel.right .panel-header::after {
+    content: '▾';
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    transition: transform 0.2s;
+  }
+  .panel.right.collapsed .panel-header::after {
+    content: '▸';
+    font-size: 18px;
+  }
   .panel.right.collapsed .panel-body { display: none; }
   .setting-group { margin-bottom: 10px; }
   .setting-label { font-size: 10px; margin-bottom: 4px; }
