@@ -490,6 +490,82 @@ body {
   font-size: 13px;
   padding: 32px 0;
 }
+
+/* ===== 手机端适配 ===== */
+@media (max-width: 768px) {
+  .app {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-y: visible;
+  }
+  .panel.right {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-bottom: none;
+  }
+  .panel-header { padding: 10px 14px; font-size: 13px; }
+  .panel-body { padding: 10px 14px; }
+
+  /* 设备面板 — 水平滚动 */
+  #devicePalette {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  #devicePalette::-webkit-scrollbar { height: 3px; }
+  #devicePalette::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .device-card {
+    flex-shrink: 0;
+    min-width: 85px;
+    margin-bottom: 0;
+    padding: 8px 10px;
+    text-align: center;
+  }
+  .device-card .card-desc { display: none; }
+  .device-card .size-badge { font-size: 11px; padding: 2px 8px; margin-bottom: 4px; }
+  .device-card .card-preview { height: 4px; margin-top: 4px; }
+  .device-card.selected {
+    border-color: #fff;
+    box-shadow: 0 0 14px rgba(255,255,255,0.25);
+    background: #2e2e42;
+  }
+
+  /* 机柜区 */
+  .rack-area { padding: 8px 0 0 0; }
+  .rack-area-header { font-size: 12px; margin-bottom: 4px; }
+  .rack-scroll { padding: 0 0 6px 0; }
+  .rack-body { width: 240px; }
+  .rack-rail { width: 24px; }
+  .rack-rail.left { border-radius: 3px 0 0 3px; }
+  .rack-rail.right { border-radius: 0 3px 3px 0; }
+  .rail-hole .hole-number { font-size: 7px; left: 2px; }
+  .rail-hole::before { width: 4px; height: 4px; }
+
+  /* 设置面板 — 紧凑 */
+  .setting-group { margin-bottom: 10px; }
+  .setting-label { font-size: 10px; margin-bottom: 4px; }
+  .height-btn { padding: 6px 4px; font-size: 12px; }
+  .stats { gap: 6px; }
+  .stat-card { padding: 8px; }
+  .stat-value { font-size: 18px; }
+  .stat-label { font-size: 10px; }
+  .device-list { max-height: 120px; overflow-y: auto; }
+  .device-list-item { font-size: 11px; padding: 4px 6px; }
+  .btn { padding: 8px 12px; font-size: 12px; margin-bottom: 6px; }
+
+  /* 弹窗 */
+  .modal { width: 90vw; padding: 18px; }
+  .modal input[type="text"] { font-size: 16px; } /* 防止 iOS 缩放 */
+  .color-row { gap: 6px; }
+  .modal .color-swatch { width: 24px; height: 24px; }
+}
 </style>
 </head>
 <body>
@@ -803,17 +879,31 @@ function updateSlotHighlights() {
 }
 
 // ==================== 拖拽逻辑 ====================
-let _dragSize = 1; // Firefox 兼容：dragover 中 getData 可能为空
+let _dragSize = 1;       // Firefox 兼容：dragover 中 getData 可能为空
+let _dragStarted = false; // 区分拖拽和点击
+let _selectedSize = null; // 手机端：点击选中的设备 U 数
+
+function clearSelection() {
+  _selectedSize = null;
+  document.querySelectorAll('#devicePalette .device-card').forEach(c => c.classList.remove('selected'));
+  // 清除机柜上可能残留的占位高亮
+  state._hoverU = null;
+  state._hoverSize = null;
+  updateSlotHighlights();
+}
 
 function setupDragFromPalette() {
   const cards = document.querySelectorAll('#devicePalette .device-card');
   cards.forEach(card => {
+    // 桌面拖拽
     card.addEventListener('dragstart', (e) => {
+      _dragStarted = true;
       const size = parseInt(card.dataset.size);
       _dragSize = size;
       e.dataTransfer.setData('application/json', JSON.stringify({ uSize: size }));
       e.dataTransfer.effectAllowed = 'copy';
       card.classList.add('dragging');
+      clearSelection();
     });
     card.addEventListener('dragend', (e) => {
       card.classList.remove('dragging');
@@ -821,6 +911,20 @@ function setupDragFromPalette() {
       state._hoverU = null;
       state._hoverSize = null;
       updateSlotHighlights();
+      setTimeout(() => { _dragStarted = false; }, 50);
+    });
+
+    // 手机端：点击选中
+    card.addEventListener('click', (e) => {
+      if (_dragStarted) return; // 刚拖拽过，忽略
+      const size = parseInt(card.dataset.size);
+      if (_selectedSize === size) {
+        clearSelection(); // 再次点击取消选中
+      } else {
+        clearSelection();
+        _selectedSize = size;
+        card.classList.add('selected');
+      }
     });
   });
 }
@@ -834,7 +938,32 @@ function setupDropOnRack() {
   $rackBody.addEventListener('dragover', handleRackDragOver);
   $rackBody.addEventListener('dragleave', handleRackDragLeave);
   $rackBody.addEventListener('drop', handleRackDrop);
+
+  // 手机端：点击机柜放置选中设备
+  $rackBody.addEventListener('click', (e) => {
+    if (!_selectedSize) return;
+    // 点到设备块上则不处理（让设备块处理编辑）
+    if (e.target.closest('.device-block')) return;
+    // 点到箭头按钮不处理
+    if (e.target.closest('.dev-move')) return;
+
+    const u = getUFromMouse(e);
+    if (!canPlaceDevice(u, _selectedSize)) {
+      shakeElement($rackBody);
+      return;
+    }
+    addDevice(u, _selectedSize);
+    clearSelection();
+  });
 }
+
+// 点击空白区域取消选中
+document.addEventListener('click', (e) => {
+  if (!_selectedSize) return;
+  if (e.target.closest('#devicePalette')) return;
+  if (e.target.closest('#rackBody')) return;
+  clearSelection();
+});
 
 function getUFromMouse(e) {
   const rect = $rackBody.getBoundingClientRect();
