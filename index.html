@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>弱电机柜模拟安装</title>
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<style>
+:root {
+  --bg: #1e1e2e;
+  --panel-bg: #252536;
+  --border: #3a3a50;
+  --text: #cdd6f4;
+  --text-dim: #a6adc8;
+  --accent: #89b4fa;
+  --rack-bg: #1a1a28;
+  --rail-bg: #2d2d3f;
+  --slot-a: #222236;
+  --slot-b: #282840;
+  --danger: #f38ba8;
+  --success: #a6e3a1;
+  --warning: #fab387;
+  --radius: 8px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: #16161e;
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  user-select: none;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr 260px;
+  height: 100vh;
+  gap: 0;
+}
+
+/* ===== 面板通用 ===== */
+.panel {
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.panel.right { border-right: none; border-left: 1px solid var(--border); }
+
+.panel-header {
+  padding: 16px 20px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-header .icon { font-size: 18px; }
+
+.panel-body { padding: 16px; flex: 1; }
+
+/* ===== 左侧 - 设备面板 ===== */
+.device-card {
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+  cursor: grab;
+  transition: all 0.15s;
+  position: relative;
+}
+.device-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(137,180,250,0.15);
+}
+.device-card:active { cursor: grabbing; }
+.device-card.dragging { opacity: 0.4; }
+
+.device-card .size-badge {
+  display: inline-block;
+  background: var(--accent);
+  color: #1e1e2e;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.device-card .card-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.device-card .card-preview {
+  height: 8px;
+  border-radius: 3px;
+  background: var(--accent);
+  margin-top: 8px;
+  opacity: 0.5;
+}
+
+/* ===== 中间 - 机柜操作区 ===== */
+.rack-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0 16px 0;
+  overflow: hidden;
+}
+
+.rack-area-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.rack-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 40px 20px 40px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.rack-scroll::-webkit-scrollbar { width: 6px; }
+.rack-scroll::-webkit-scrollbar-track { background: transparent; }
+.rack-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.rack-wrapper {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.rack-rail {
+  width: 36px;
+  background: var(--rail-bg);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.rack-rail.left { border-radius: 4px 0 0 4px; border-right: none; }
+.rack-rail.right { border-radius: 0 4px 4px 0; border-left: none; }
+
+.rail-hole {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  position: relative;
+}
+.rail-hole::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #555;
+  border-radius: 50%;
+  border: 1px solid #444;
+}
+.rail-hole .hole-number {
+  font-size: 9px;
+  color: #666;
+  position: absolute;
+  left: 4px;
+}
+
+.rack-body {
+  position: relative;
+  background: var(--rack-bg);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  width: 320px;
+  flex-shrink: 0;
+}
+
+/* U 槽位 */
+.u-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.1s;
+}
+.u-slot:nth-child(odd) { background: rgba(255,255,255,0.015); }
+.u-slot.drop-hover {
+  background: rgba(137,180,250,0.2) !important;
+  border-bottom-color: var(--accent);
+  z-index: 2;
+}
+.u-slot.drop-invalid {
+  background: rgba(243,139,168,0.2) !important;
+}
+
+/* 设备块 */
+.device-block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 4px;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
+  transition: filter 0.1s;
+  z-index: 3;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.device-block:hover { filter: brightness(1.1); }
+.device-block .dev-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  text-align: center;
+  line-height: 1.3;
+  pointer-events: none;
+}
+.device-block .dev-size-label {
+  font-size: 10px;
+  color: rgba(255,255,255,0.7);
+  pointer-events: none;
+}
+.device-block .dev-delete {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.device-block:hover .dev-delete { opacity: 1; }
+.device-block .dev-delete:hover { background: var(--danger); }
+
+.device-block .dev-move {
+  border: none;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.1s;
+  padding: 0;
+}
+.device-block:hover .dev-move { opacity: 0.85; }
+.device-block .dev-move:hover { background: rgba(255,255,255,0.25); }
+.device-block .dev-move.disabled {
+  cursor: default;
+  pointer-events: none;
+}
+.device-block:hover .dev-move.disabled { opacity: 0.18; }
+
+/* ===== 右侧 - 设置面板 ===== */
+.setting-group {
+  margin-bottom: 20px;
+}
+.setting-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.height-options {
+  display: flex;
+  gap: 8px;
+}
+.height-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.15s;
+  text-align: center;
+}
+.height-btn:hover { border-color: var(--text-dim); }
+.height-btn.active {
+  border-color: var(--accent);
+  background: rgba(137,180,250,0.1);
+  color: var(--accent);
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #1e1e2e;
+}
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  color: var(--text);
+}
+.btn-outline:hover { border-color: var(--text-dim); }
+.btn-danger {
+  background: transparent;
+  border: 1.5px solid var(--danger);
+  color: var(--danger);
+}
+.btn-danger:hover { background: rgba(243,139,168,0.1); }
+
+.stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+.stat-card {
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 12px;
+  text-align: center;
+}
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.device-list { margin-top: 8px; }
+.device-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.device-list-item:hover { background: var(--bg); }
+.device-list-item .color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.device-list-item .item-info { flex: 1; min-width: 0; }
+.device-list-item .item-name { font-weight: 500; }
+.device-list-item .item-pos { color: var(--text-dim); font-size: 10px; }
+
+/* ===== 编辑弹窗 ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.hidden { display: none; }
+
+.modal {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  width: 380px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal h3 {
+  font-size: 16px;
+  margin-bottom: 20px;
+  color: var(--text);
+}
+.modal .field { margin-bottom: 16px; }
+.modal label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.modal input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.modal input[type="text"]:focus { border-color: var(--accent); }
+.modal .color-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.modal .color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.1s;
+}
+.modal .color-swatch:hover { transform: scale(1.15); }
+.modal .color-swatch.active { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.3); }
+
+.preset-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.preset-tag {
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-dim);
+  transition: all 0.1s;
+}
+.preset-tag:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+.modal-actions .btn { margin-bottom: 0; }
+
+.empty-hint {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 32px 0;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ===== 左侧：设备面板 ===== -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="icon">📦</span> 设备面板
+    </div>
+    <div class="panel-body" id="devicePalette">
+      <div class="device-card" draggable="true" data-size="1">
+        <div class="size-badge">1U</div>
+        <div class="card-desc">配线架 / 理线器 / 交换机 等</div>
+        <div class="card-preview" style="height:6px;"></div>
+      </div>
+      <div class="device-card" draggable="true" data-size="2">
+        <div class="size-badge">2U</div>
+        <div class="card-desc">中型交换机 / 小型服务器</div>
+        <div class="card-preview" style="height:14px;"></div>
+      </div>
+      <div class="device-card" draggable="true" data-size="3">
+        <div class="size-badge">3U</div>
+        <div class="card-desc">服务器 / 存储设备</div>
+        <div class="card-preview" style="height:22px;"></div>
+      </div>
+      <div class="device-card" draggable="true" data-size="4">
+        <div class="size-badge">4U</div>
+        <div class="card-desc">大型服务器 / UPS 电源</div>
+        <div class="card-preview" style="height:30px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 中间：机柜模拟区 ===== -->
+  <div class="rack-area" id="rackArea">
+    <div class="rack-area-header">📐 机柜模拟区 — 拖拽设备到机柜上</div>
+    <div class="rack-scroll" id="rackScroll">
+      <div class="rack-wrapper" id="rackWrapper">
+        <div class="rack-rail left" id="leftRail"></div>
+        <div class="rack-body" id="rackBody"></div>
+        <div class="rack-rail right" id="rightRail"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 右侧：设置面板 ===== -->
+  <div class="panel right">
+    <div class="panel-header">
+      <span class="icon">⚙️</span> 设置
+    </div>
+    <div class="panel-body">
+      <div class="setting-group">
+        <div class="setting-label">机柜高度</div>
+        <div class="height-options">
+          <button class="height-btn" data-height="24">24U</button>
+          <button class="height-btn active" data-height="42">42U</button>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-label">统计</div>
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-value" id="statUsed">0</div>
+            <div class="stat-label">已用 U 数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statFree">42</div>
+            <div class="stat-label">剩余 U 数</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-group">
+        <div class="setting-label">已安装设备</div>
+        <div class="device-list" id="deviceList">
+          <div class="empty-hint">暂无设备，从左侧拖入</div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="exportImage()">📸 导出为 PNG 图片</button>
+      <button class="btn btn-outline" onclick="clearAll()">🗑️ 清空全部设备</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 设备编辑弹窗 ===== -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">编辑设备</h3>
+    <div class="field">
+      <label>设备名称</label>
+      <input type="text" id="modalName" placeholder="例如：24口交换机" maxlength="20">
+    </div>
+    <div class="field">
+      <label>快速选择</label>
+      <div class="preset-row" id="presetRow"></div>
+    </div>
+    <div class="field">
+      <label>颜色</label>
+      <div class="color-row" id="colorRow"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+      <button class="btn btn-outline btn-danger" id="modalDelete" style="display:none;" onclick="deleteFromModal()">删除设备</button>
+      <button class="btn btn-primary" onclick="confirmModal()">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== 应用状态 ====================
+const PRESET_COLORS = [
+  '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#EF4444',
+  '#06B6D4', '#EC4899', '#6366F1', '#14B8A6', '#F97316',
+  '#84CC16', '#E11D48',
+];
+
+const PRESET_TYPES = [
+  { name: '交换机', color: '#3B82F6' },
+  { name: '配线架', color: '#10B981' },
+  { name: '理线器', color: '#F59E0B' },
+  { name: '服务器', color: '#8B5CF6' },
+  { name: '防火墙', color: '#EF4444' },
+  { name: '路由器', color: '#06B6D4' },
+  { name: 'UPS电源', color: '#EC4899' },
+  { name: '空白面板', color: '#6B7280' },
+];
+
+const state = {
+  rackHeight: 42,
+  uHeight: 20, // 每U像素高度，init 时动态计算
+  devices: [],
+  nextId: 1,
+  editingId: null,
+  modalColor: '#3B82F6',
+};
+
+// ==================== DOM 引用 ====================
+const $rackBody = document.getElementById('rackBody');
+const $leftRail = document.getElementById('leftRail');
+const $rightRail = document.getElementById('rightRail');
+const $deviceList = document.getElementById('deviceList');
+const $modalOverlay = document.getElementById('modalOverlay');
+const $modalName = document.getElementById('modalName');
+const $modalTitle = document.getElementById('modalTitle');
+const $modalDelete = document.getElementById('modalDelete');
+const $colorRow = document.getElementById('colorRow');
+const $presetRow = document.getElementById('presetRow');
+const $statUsed = document.getElementById('statUsed');
+const $statFree = document.getElementById('statFree');
+
+// 设备拖拽移动
+let _dragState = null; // { dev, startY, offsetY, clone, isDragging, block }
+
+// ==================== 初始化 ====================
+function init() {
+  setupDragFromPalette();
+  setupDropOnRack();
+  setupDeviceDrag();
+  setupHeightButtons();
+  setupColorRow();
+  setupPresetRow();
+  recalcUHeight();
+  renderRack();
+  updateStats();
+  window.addEventListener('resize', () => {
+    recalcUHeight();
+    renderRack();
+  });
+}
+
+// 动态计算每U高度，确保整个机柜在视口内可见
+function recalcUHeight() {
+  const scrollEl = document.getElementById('rackScroll');
+  // rackScroll 内 padding-bottom 20px，机柜顶部留一点呼吸空间
+  const available = scrollEl.clientHeight - 24;
+  const minHeight = 16; // 最小每U像素，保证可读性
+  const ideal = Math.floor(available / state.rackHeight);
+  state.uHeight = Math.max(minHeight, ideal);
+}
+
+// ==================== 渲染机柜 ====================
+function renderRack() {
+  const uh = state.uHeight;
+  const totalH = state.rackHeight * uh;
+
+  $rackBody.style.height = totalH + 'px';
+  $leftRail.style.height = totalH + 'px';
+  $rightRail.style.height = totalH + 'px';
+
+  // 渲染滑轨孔位
+  let railHTML = '';
+  for (let u = 1; u <= state.rackHeight; u++) {
+    railHTML += `<div class="rail-hole" style="height:${uh}px"><span class="hole-number">${u}</span></div>`;
+  }
+  $leftRail.innerHTML = railHTML;
+  $rightRail.innerHTML = railHTML;
+
+  // 渲染U槽位（drop targets）
+  let slotsHTML = '';
+  for (let u = 1; u <= state.rackHeight; u++) {
+    const top = (u - 1) * uh;
+    slotsHTML += `<div class="u-slot" data-u="${u}" style="top:${top}px; height:${uh}px"></div>`;
+  }
+  $rackBody.innerHTML = slotsHTML;
+
+  // 渲染设备块（在 slots 之后，确保 z-index 覆盖在上面）
+  state.devices.forEach(dev => renderDeviceBlock(dev));
+
+  renderDeviceList();
+  updateStats();
+}
+
+function renderDeviceBlock(dev) {
+  const uh = state.uHeight;
+  const top = (dev.uPos - 1) * uh;
+  const height = dev.uSize * uh;
+
+  // 根据实际像素高度动态调整字号
+  const nameSize = Math.round(Math.max(8, Math.min(13, height * 0.38)));
+  const showSizeLabel = dev.uSize > 1 && height >= 36;
+  const gap = height < 30 ? 1 : 2;
+  const btnSize = height < 30 ? 14 : 18;
+  const btnTop = height < 30 ? 2 : 4;
+  const btnRight = height < 30 ? 3 : 6;
+
+  // 箭头按钮（上下移动）
+  const arrSize = Math.max(10, Math.min(btnSize, Math.floor(height / 2) - 2));
+  const arrFont = arrSize - 4;
+  const canUp = canMoveUp(dev.id);
+  const canDown = canMoveDown(dev.id);
+  const arrLeft = 2;
+  // 1U 设备箭头水平排列，多U设备垂直排列
+  const arrVertical = height >= 30;
+
+  const block = document.createElement('div');
+  block.className = 'device-block';
+  block.style.top = top + 'px';
+  block.style.height = height + 'px';
+  block.style.backgroundColor = dev.color;
+  block.style.gap = gap + 'px';
+  block.dataset.id = dev.id;
+
+  const arrowsHTML = arrVertical ? `
+    <div class="dev-arrows" style="position:absolute;left:${arrLeft}px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:1px;">
+      <button class="dev-move dev-move-up${canUp?'':' disabled'}" data-id="${dev.id}" data-dir="up"
+        style="width:${arrSize}px;height:${arrSize}px;font-size:${arrFont}px">▲</button>
+      <button class="dev-move dev-move-down${canDown?'':' disabled'}" data-id="${dev.id}" data-dir="down"
+        style="width:${arrSize}px;height:${arrSize}px;font-size:${arrFont}px">▼</button>
+    </div>
+  ` : `
+    <div class="dev-arrows" style="position:absolute;left:${arrLeft}px;top:50%;transform:translateY(-50%);display:flex;gap:1px;">
+      <button class="dev-move dev-move-up${canUp?'':' disabled'}" data-id="${dev.id}" data-dir="up"
+        style="width:${arrSize}px;height:${arrSize}px;font-size:${arrFont}px">▲</button>
+      <button class="dev-move dev-move-down${canDown?'':' disabled'}" data-id="${dev.id}" data-dir="down"
+        style="width:${arrSize}px;height:${arrSize}px;font-size:${arrFont}px">▼</button>
+    </div>
+  `;
+
+  block.innerHTML = arrowsHTML + `
+    <span class="dev-name" style="font-size:${nameSize}px">${escapeHTML(dev.name)}</span>
+    ${showSizeLabel ? `<span class="dev-size-label" style="font-size:${Math.max(7, nameSize-2)}px">${dev.uSize}U</span>` : ''}
+    <button class="dev-delete" data-id="${dev.id}" style="width:${btnSize}px;height:${btnSize}px;top:${btnTop}px;right:${btnRight}px;font-size:${btnSize-6}px">×</button>
+  `;
+
+  block.addEventListener('click', (e) => {
+    if (e.target.classList.contains('dev-delete')) {
+      e.stopPropagation();
+      removeDevice(dev.id);
+      return;
+    }
+    if (e.target.classList.contains('dev-move')) {
+      e.stopPropagation();
+      const dir = e.target.dataset.dir;
+      if (dir === 'up') moveDeviceUp(dev.id);
+      else moveDeviceDown(dev.id);
+      return;
+    }
+  });
+
+  block.addEventListener('dblclick', (e) => {
+    openEditModal(dev.id);
+  });
+
+  $rackBody.appendChild(block);
+}
+
+function redrawAllDeviceBlocks() {
+  // 移除旧设备块
+  $rackBody.querySelectorAll('.device-block').forEach(b => b.remove());
+  // 重新渲染
+  state.devices.forEach(dev => renderDeviceBlock(dev));
+  // 更新槽位高亮
+  updateSlotHighlights();
+}
+
+function updateSlotHighlights() {
+  const slots = $rackBody.querySelectorAll('.u-slot');
+  slots.forEach(s => {
+    s.classList.remove('drop-hover', 'drop-invalid');
+    if (state._hoverU && state._hoverSize) {
+      const u = parseInt(s.dataset.u);
+      if (u >= state._hoverU && u < state._hoverU + state._hoverSize) {
+        const canFit = canPlaceDevice(state._hoverU, state._hoverSize);
+        s.classList.add(canFit ? 'drop-hover' : 'drop-invalid');
+      }
+    }
+  });
+}
+
+// ==================== 拖拽逻辑 ====================
+let _dragSize = 1; // Firefox 兼容：dragover 中 getData 可能为空
+
+function setupDragFromPalette() {
+  const cards = document.querySelectorAll('#devicePalette .device-card');
+  cards.forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      const size = parseInt(card.dataset.size);
+      _dragSize = size;
+      e.dataTransfer.setData('application/json', JSON.stringify({ uSize: size }));
+      e.dataTransfer.effectAllowed = 'copy';
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', (e) => {
+      card.classList.remove('dragging');
+      _dragSize = 1;
+      state._hoverU = null;
+      state._hoverSize = null;
+      updateSlotHighlights();
+    });
+  });
+}
+
+function setupDropOnRack() {
+  // 全局阻止默认行为以允许drop
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => e.preventDefault());
+
+  // 在 rack body 上统一处理拖放（鼠标坐标计算 U 位，避免设备块拦截）
+  $rackBody.addEventListener('dragover', handleRackDragOver);
+  $rackBody.addEventListener('dragleave', handleRackDragLeave);
+  $rackBody.addEventListener('drop', handleRackDrop);
+}
+
+function getUFromMouse(e) {
+  const rect = $rackBody.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  return Math.floor(y / state.uHeight) + 1;
+}
+
+function getDragSize(e) {
+  // 优先从 dataTransfer 读取（drop 事件中 Firefox 也能读取），dragover 用全局变量兜底
+  try {
+    const data = JSON.parse(e.dataTransfer.getData('application/json'));
+    if (data.uSize) return data.uSize;
+  } catch (_) {}
+  return _dragSize;
+}
+
+function handleRackDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  const u = getUFromMouse(e);
+  const size = getDragSize(e);
+  if (u !== state._hoverU || size !== state._hoverSize) {
+    state._hoverU = u;
+    state._hoverSize = size;
+    updateSlotHighlights();
+  }
+}
+
+function handleRackDragLeave(e) {
+  // 只在真正离开 rackBody 时清除
+  if (!e.relatedTarget || !$rackBody.contains(e.relatedTarget)) {
+    state._hoverU = null;
+    state._hoverSize = null;
+    updateSlotHighlights();
+  }
+}
+
+function handleRackDrop(e) {
+  e.preventDefault();
+  const u = getUFromMouse(e);
+  const size = getDragSize(e);
+
+  state._hoverU = null;
+  state._hoverSize = null;
+  updateSlotHighlights();
+
+  if (!canPlaceDevice(u, size)) {
+    shakeElement($rackBody);
+    return;
+  }
+
+  addDevice(u, size);
+}
+
+// ==================== 设备管理 ====================
+function canPlaceDevice(uPos, uSize, excludeId) {
+  // 边界检查
+  if (uPos < 1 || uPos + uSize - 1 > state.rackHeight) return false;
+
+  // 重叠检查
+  for (const dev of state.devices) {
+    if (excludeId && dev.id === excludeId) continue;
+    const devStart = dev.uPos;
+    const devEnd = dev.uPos + dev.uSize - 1;
+    const newStart = uPos;
+    const newEnd = uPos + uSize - 1;
+    if (newStart <= devEnd && newEnd >= devStart) return false;
+  }
+  return true;
+}
+
+function addDevice(uPos, uSize) {
+  const dev = {
+    id: state.nextId++,
+    name: getDefaultName(uSize),
+    uPos,
+    uSize,
+    color: PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)],
+  };
+  state.devices.push(dev);
+  state.devices.sort((a, b) => a.uPos - b.uPos);
+  renderRack();
+  openEditModal(dev.id);
+}
+
+function getDefaultName(size) {
+  const names = { 1: '1U设备', 2: '2U设备', 3: '3U设备', 4: '4U设备' };
+  return names[size] || `${size}U设备`;
+}
+
+function removeDevice(id) {
+  state.devices = state.devices.filter(d => d.id !== id);
+  renderRack();
+}
+
+function findNearestPos(dev, direction) {
+  // 向上/向下搜索最近的可用空位（可跨过其他设备）
+  if (direction === 'up') {
+    for (let pos = dev.uPos - 1; pos >= 1; pos--) {
+      if (canPlaceDevice(pos, dev.uSize, dev.id)) return pos;
+    }
+  } else {
+    const maxPos = state.rackHeight - dev.uSize + 1;
+    for (let pos = dev.uPos + 1; pos <= maxPos; pos++) {
+      if (canPlaceDevice(pos, dev.uSize, dev.id)) return pos;
+    }
+  }
+  return null;
+}
+
+function canMoveUp(id) {
+  const dev = findDevice(id);
+  if (!dev) return false;
+  return findNearestPos(dev, 'up') !== null;
+}
+
+function canMoveDown(id) {
+  const dev = findDevice(id);
+  if (!dev) return false;
+  return findNearestPos(dev, 'down') !== null;
+}
+
+function moveDeviceUp(id) {
+  const dev = findDevice(id);
+  if (!dev) return;
+  const newPos = findNearestPos(dev, 'up');
+  if (newPos === null) return;
+  dev.uPos = newPos;
+  state.devices.sort((a, b) => a.uPos - b.uPos);
+  renderRack();
+}
+
+function moveDeviceDown(id) {
+  const dev = findDevice(id);
+  if (!dev) return;
+  const newPos = findNearestPos(dev, 'down');
+  if (newPos === null) return;
+  dev.uPos = newPos;
+  state.devices.sort((a, b) => a.uPos - b.uPos);
+  renderRack();
+}
+
+// ==================== 设备拖拽移动 ====================
+function setupDeviceDrag() {
+  $rackBody.addEventListener('mousedown', (e) => {
+    // 只在设备块本体上启动拖拽（排除箭头和删除按钮）
+    const block = e.target.closest('.device-block');
+    if (!block) return;
+    if (e.target.classList.contains('dev-move')) return;
+    if (e.target.classList.contains('dev-delete')) return;
+
+    const id = parseInt(block.dataset.id);
+    const dev = findDevice(id);
+    if (!dev) return;
+
+    e.preventDefault();
+    const rect = $rackBody.getBoundingClientRect();
+    _dragState = {
+      dev,
+      startY: e.clientY,
+      offsetY: e.clientY - (rect.top + (dev.uPos - 1) * state.uHeight),
+      clone: null,
+      isDragging: false,
+      block,
+    };
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!_dragState) return;
+    const dist = Math.abs(e.clientY - _dragState.startY);
+    if (!_dragState.isDragging && dist < 4) return; // 阈值防误触
+
+    if (!_dragState.isDragging) {
+      _dragState.isDragging = true;
+      _dragState.block.style.opacity = '0.25';
+      // 创建拖拽克隆体
+      const clone = _dragState.block.cloneNode(true);
+      clone.style.position = 'fixed';
+      clone.style.zIndex = '200';
+      clone.style.pointerEvents = 'none';
+      clone.style.opacity = '0.85';
+      clone.style.width = _dragState.block.offsetWidth + 'px';
+      clone.style.boxShadow = '0 4px 20px rgba(0,0,0,0.4)';
+      clone.style.transition = 'none';
+      document.body.appendChild(clone);
+      _dragState.clone = clone;
+    }
+
+    // 移动克隆体
+    const rackRect = $rackBody.getBoundingClientRect();
+    _dragState.clone.style.left = rackRect.left + 'px';
+    _dragState.clone.style.top = (e.clientY - _dragState.offsetY) + 'px';
+
+    // 更新高亮
+    const relY = e.clientY - rackRect.top;
+    const maxU = state.rackHeight - _dragState.dev.uSize + 1;
+    const targetU = Math.max(1, Math.min(maxU, Math.floor(relY / state.uHeight) + 1));
+    state._hoverU = targetU;
+    state._hoverSize = _dragState.dev.uSize;
+    updateSlotHighlights();
+  });
+
+  document.addEventListener('mouseup', (e) => {
+    if (!_dragState) return;
+
+    if (_dragState.isDragging) {
+      const rackRect = $rackBody.getBoundingClientRect();
+      const relY = e.clientY - rackRect.top;
+      const maxU = state.rackHeight - _dragState.dev.uSize + 1;
+      let targetU = Math.max(1, Math.min(maxU, Math.floor(relY / state.uHeight) + 1));
+
+      // 找最近的可用空位
+      let finalPos = null;
+      for (let p = targetU; p >= 1; p--) {
+        if (canPlaceDevice(p, _dragState.dev.uSize, _dragState.dev.id)) { finalPos = p; break; }
+      }
+      if (finalPos === null) {
+        for (let p = targetU + 1; p <= maxU; p++) {
+          if (canPlaceDevice(p, _dragState.dev.uSize, _dragState.dev.id)) { finalPos = p; break; }
+        }
+      }
+
+      if (finalPos !== null && finalPos !== _dragState.dev.uPos) {
+        _dragState.dev.uPos = finalPos;
+        state.devices.sort((a, b) => a.uPos - b.uPos);
+        renderRack();
+      } else {
+        // 位置没变，恢复原状
+        if (_dragState.block) _dragState.block.style.opacity = '';
+        state._hoverU = null;
+        state._hoverSize = null;
+        updateSlotHighlights();
+      }
+
+      if (_dragState.clone) _dragState.clone.remove();
+    }
+
+    _dragState = null;
+  });
+}
+
+function clearAll() {
+  if (state.devices.length === 0) return;
+  if (!confirm(`确定要清空全部 ${state.devices.length} 个设备吗？`)) return;
+  state.devices = [];
+  renderRack();
+}
+
+function findDevice(id) {
+  return state.devices.find(d => d.id === id);
+}
+
+// ==================== 编辑弹窗 ====================
+function setupColorRow() {
+  $colorRow.innerHTML = PRESET_COLORS.map(c =>
+    `<div class="color-swatch" style="background:${c}" data-color="${c}" onclick="selectColor('${c}', this)"></div>`
+  ).join('');
+}
+
+function setupPresetRow() {
+  $presetRow.innerHTML = PRESET_TYPES.map(p =>
+    `<span class="preset-tag" data-name="${p.name}" data-color="${p.color}" onclick="applyPreset('${p.name}', '${p.color}')">${p.name}</span>`
+  ).join('');
+}
+
+function openEditModal(id) {
+  const dev = findDevice(id);
+  if (!dev) return;
+
+  state.editingId = id;
+  state.modalColor = dev.color;
+
+  $modalTitle.textContent = `编辑设备 — ${dev.uSize}U`;
+  $modalName.value = dev.name;
+  $modalDelete.style.display = 'inline-block';
+
+  selectColorInModal(dev.color);
+
+  $modalOverlay.classList.remove('hidden');
+  setTimeout(() => $modalName.focus(), 100);
+}
+
+function selectColor(color, el) {
+  state.modalColor = color;
+  document.querySelectorAll('#colorRow .color-swatch').forEach(s => s.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function selectColorInModal(color) {
+  document.querySelectorAll('#colorRow .color-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === color);
+  });
+}
+
+function applyPreset(name, color) {
+  $modalName.value = name;
+  state.modalColor = color;
+  selectColorInModal(color);
+}
+
+function confirmModal() {
+  const dev = findDevice(state.editingId);
+  if (!dev) return;
+
+  const name = $modalName.value.trim();
+  if (!name) { $modalName.focus(); return; }
+
+  dev.name = name;
+  dev.color = state.modalColor;
+
+  closeModal();
+  renderRack();
+}
+
+function deleteFromModal() {
+  const id = state.editingId;
+  closeModal();
+  removeDevice(id);
+}
+
+function closeModal() {
+  $modalOverlay.classList.add('hidden');
+  state.editingId = null;
+}
+
+// 点击遮罩关闭
+$modalOverlay.addEventListener('click', (e) => {
+  if (e.target === $modalOverlay) closeModal();
+});
+
+// ESC 关闭
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && !$modalOverlay.classList.contains('hidden')) {
+    closeModal();
+  }
+});
+
+// ==================== 机柜高度切换 ====================
+function setupHeightButtons() {
+  document.querySelectorAll('.height-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const newHeight = parseInt(btn.dataset.height);
+      if (newHeight === state.rackHeight) return;
+
+      // 检查是否有设备超出范围
+      const outOfRange = state.devices.filter(d => d.uPos + d.uSize - 1 > newHeight);
+      if (outOfRange.length > 0) {
+        const names = outOfRange.map(d => d.name).join('、');
+        if (!confirm(`切换到 ${newHeight}U 将移除以下设备：${names}\n\n确定继续？`)) return;
+        state.devices = state.devices.filter(d => d.uPos + d.uSize - 1 <= newHeight);
+      }
+
+      state.rackHeight = newHeight;
+      document.querySelectorAll('.height-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      recalcUHeight();
+      renderRack();
+    });
+  });
+}
+
+// ==================== 设备列表渲染 ====================
+function renderDeviceList() {
+  if (state.devices.length === 0) {
+    $deviceList.innerHTML = '<div class="empty-hint">暂无设备，从左侧拖入</div>';
+    return;
+  }
+
+  $deviceList.innerHTML = state.devices.map(d => `
+    <div class="device-list-item" ondblclick="openEditModal(${d.id})">
+      <div class="color-dot" style="background:${d.color}"></div>
+      <div class="item-info">
+        <div class="item-name">${escapeHTML(d.name)}</div>
+        <div class="item-pos">U${d.uPos} · ${d.uSize}U</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ==================== 统计 ====================
+function updateStats() {
+  const used = state.devices.reduce((sum, d) => sum + d.uSize, 0);
+  const free = state.rackHeight - used;
+  $statUsed.textContent = used;
+  $statFree.textContent = free;
+}
+
+// ==================== 导出 ====================
+function exportImage() {
+  const wrapper = document.getElementById('rackWrapper');
+  html2canvas(wrapper, {
+    backgroundColor: '#16161e',
+    scale: 2,
+  }).then(canvas => {
+    const link = document.createElement('a');
+    link.download = `机柜模拟_${state.rackHeight}U_${new Date().toISOString().slice(0,10)}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }).catch(err => {
+    alert('导出失败：' + err.message);
+  });
+}
+
+// ==================== 辅助 ====================
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function shakeElement(el) {
+  el.style.animation = 'none';
+  el.offsetHeight; // reflow
+  el.style.animation = 'shake 0.4s ease';
+}
+
+// 添加 shake 动画
+const shakeStyle = document.createElement('style');
+shakeStyle.textContent = `
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+`;
+document.head.appendChild(shakeStyle);
+
+// ==================== 启动 ====================
+init();
+</script>
+
+</body>
+</html>
