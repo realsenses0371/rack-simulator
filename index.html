@@ -169,28 +169,28 @@ body {
   border-bottom: 1px solid rgba(255,255,255,0.05);
   position: relative;
 }
-.rail-hole::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  background: #555;
+/* 每 U 3 个安装孔（EIA-310 标准） */
+.hole-dot {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 5px;
+  height: 5px;
+  background: #444;
   border-radius: 50%;
-  border: 1px solid #444;
+  border: 1px solid #555;
+  z-index: 1;
 }
 .rail-hole .hole-number {
   font-size: 9px;
   color: #666;
   position: absolute;
   left: 4px;
+  z-index: 2;
 }
 /* 右轨毫米刻度 */
 .rack-rail.right .rail-hole { justify-content: flex-end; padding-right: 6px; }
-.rack-rail.right .rail-hole::before {
-  width: 4px;
-  height: 4px;
-  position: absolute;
-  left: 4px;
-}
+.rack-rail.right .hole-dot { left: 6px; width: 4px; height: 4px; }
 .rail-hole .hole-mm {
   left: auto;
   right: auto;
@@ -199,6 +199,7 @@ body {
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.5px;
+  z-index: 2;
 }
 
 .rack-body {
@@ -569,7 +570,7 @@ body {
   .rack-rail.right { border-radius: 0 3px 3px 0; }
   .rail-hole .hole-number { font-size: 7px; left: 2px; }
   .rack-rail.right .rail-hole .hole-mm { font-size: 8px; }
-  .rail-hole::before { width: 4px; height: 4px; }
+  .hole-dot { width: 3px; height: 3px; }
 
   /* 设置面板 — 可折叠 */
   .panel.right .panel-header {
@@ -847,12 +848,16 @@ function renderRack() {
   $leftRail.style.height = totalH + 'px';
   $rightRail.style.height = totalH + 'px';
 
-  // 渲染滑轨孔位：左轨 U 号，右轨 mm
+  // 渲染滑轨孔位：左轨 U 号 + 3孔，右轨 mm + 3孔
+  // 标准 EIA-310：每 U 3 孔，位置 14.3% / 50% / 85.7%
   let leftHTML = '', rightHTML = '';
   for (let u = 1; u <= state.rackHeight; u++) {
     const mm = getMmFromFloor(u, state.rackHeight);
-    leftHTML += `<div class="rail-hole" style="height:${uh}px"><span class="hole-number">${u}</span></div>`;
-    rightHTML += `<div class="rail-hole" style="height:${uh}px"><span class="hole-number hole-mm">${mm}</span></div>`;
+    const holes = '<span class="hole-dot" style="top:14.3%"></span>'
+                + '<span class="hole-dot" style="top:50%"></span>'
+                + '<span class="hole-dot" style="top:85.7%"></span>';
+    leftHTML += `<div class="rail-hole" style="height:${uh}px">${holes}<span class="hole-number">${u}</span></div>`;
+    rightHTML += `<div class="rail-hole" style="height:${uh}px">${holes}<span class="hole-number hole-mm">${mm}</span></div>`;
   }
   $leftRail.innerHTML = leftHTML;
   $rightRail.innerHTML = rightHTML;
