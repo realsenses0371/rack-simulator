@@ -156,7 +156,11 @@ body {
   flex-shrink: 0;
 }
 .rack-rail.left { border-radius: 4px 0 0 4px; border-right: none; }
-.rack-rail.right { border-radius: 0 4px 4px 0; border-left: none; }
+.rack-rail.right {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+  width: 50px; /* 加宽以显示毫米刻度 */
+}
 
 .rail-hole {
   display: flex;
@@ -179,11 +183,22 @@ body {
   position: absolute;
   left: 4px;
 }
+/* 右轨毫米刻度 */
+.rack-rail.right .rail-hole { justify-content: flex-end; padding-right: 6px; }
+.rack-rail.right .rail-hole::before {
+  width: 4px;
+  height: 4px;
+  position: absolute;
+  left: 4px;
+}
 .rail-hole .hole-mm {
   left: auto;
-  right: 4px;
-  color: #555;
-  font-size: 8px;
+  right: auto;
+  position: relative;
+  color: #8a8a9a;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .rack-body {
@@ -549,10 +564,11 @@ body {
   .rack-scroll { padding: 0 0 6px 0; }
   .rack-body { width: 240px; }
   .rack-rail { width: 24px; }
+  .rack-rail.right { width: 38px; }
   .rack-rail.left { border-radius: 3px 0 0 3px; }
   .rack-rail.right { border-radius: 0 3px 3px 0; }
   .rail-hole .hole-number { font-size: 7px; left: 2px; }
-  .rail-hole .hole-mm { font-size: 6px; right: 2px; left: auto; }
+  .rack-rail.right .rail-hole .hole-mm { font-size: 8px; }
   .rail-hole::before { width: 4px; height: 4px; }
 
   /* 设置面板 — 可折叠 */
