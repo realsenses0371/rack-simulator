@@ -179,6 +179,12 @@ body {
   position: absolute;
   left: 4px;
 }
+.rail-hole .hole-mm {
+  left: auto;
+  right: 4px;
+  color: #555;
+  font-size: 8px;
+}
 
 .rack-body {
   position: relative;
@@ -546,6 +552,7 @@ body {
   .rack-rail.left { border-radius: 3px 0 0 3px; }
   .rack-rail.right { border-radius: 0 3px 3px 0; }
   .rail-hole .hole-number { font-size: 7px; left: 2px; }
+  .rail-hole .hole-mm { font-size: 6px; right: 2px; left: auto; }
   .rail-hole::before { width: 4px; height: 4px; }
 
   /* 设置面板 — 可折叠 */
@@ -618,12 +625,22 @@ body {
         <div class="card-desc">大型服务器 / UPS 电源</div>
         <div class="card-preview" style="height:30px;"></div>
       </div>
+      <div class="device-card" draggable="true" data-size="6">
+        <div class="size-badge">6U</div>
+        <div class="card-desc">存储阵列 / 工控机</div>
+        <div class="card-preview" style="height:46px;"></div>
+      </div>
+      <div class="device-card" draggable="true" data-size="8">
+        <div class="size-badge">8U</div>
+        <div class="card-desc">显示器(379mm) / 大型设备</div>
+        <div class="card-preview" style="height:62px;"></div>
+      </div>
     </div>
   </div>
 
   <!-- ===== 中间：机柜模拟区 ===== -->
   <div class="rack-area" id="rackArea">
-    <div class="rack-area-header">📐 机柜模拟区 — 拖拽设备到机柜上</div>
+    <div class="rack-area-header" id="rackAreaHeader">📐 机柜模拟区 — 拖拽设备到机柜上（42U / 2055mm）</div>
     <div class="rack-scroll" id="rackScroll">
       <div class="rack-wrapper" id="rackWrapper">
         <div class="rack-rail left" id="leftRail"></div>
@@ -643,6 +660,7 @@ body {
         <div class="setting-label">机柜高度</div>
         <div class="height-options">
           <button class="height-btn" data-height="24">24U</button>
+          <button class="height-btn" data-height="32">32U</button>
           <button class="height-btn active" data-height="42">42U</button>
         </div>
       </div>
@@ -658,6 +676,10 @@ body {
             <div class="stat-value" id="statFree">42</div>
             <div class="stat-label">剩余 U 数</div>
           </div>
+        </div>
+        <div class="stat-card" style="width:100%;margin-top:6px;">
+          <div class="stat-value" id="statTotalMm" style="font-size:16px;">2055mm</div>
+          <div class="stat-label">机柜总高</div>
         </div>
       </div>
 
@@ -714,6 +736,7 @@ const PRESET_TYPES = [
   { name: '防火墙', color: '#EF4444' },
   { name: '路由器', color: '#06B6D4' },
   { name: 'UPS电源', color: '#EC4899' },
+  { name: '显示器', color: '#F97316' },
   { name: '空白面板', color: '#6B7280' },
 ];
 
@@ -725,6 +748,25 @@ const state = {
   editingId: null,
   modalColor: '#3B82F6',
 };
+
+// 机柜真实尺寸（总高度包含底座/顶框，1U=44.45mm）
+const RACK_SPECS = {
+  24: 1255,
+  32: 1610,
+  42: 2055,
+};
+
+function getRackTotalMm(rackHeight) {
+  return RACK_SPECS[rackHeight] || Math.round(rackHeight * 44.45 + 188);
+}
+
+function getMmFromFloor(uPos, rackHeight) {
+  // 返回该 U 位底部距地面的毫米高度
+  const totalMm = getRackTotalMm(rackHeight);
+  const mountingMm = rackHeight * 44.45;
+  const baseOffset = (totalMm - mountingMm) / 2;
+  return Math.round(baseOffset + (rackHeight - uPos) * 44.45);
+}
 
 // ==================== DOM 引用 ====================
 const $rackBody = document.getElementById('rackBody');
@@ -789,13 +831,15 @@ function renderRack() {
   $leftRail.style.height = totalH + 'px';
   $rightRail.style.height = totalH + 'px';
 
-  // 渲染滑轨孔位
-  let railHTML = '';
+  // 渲染滑轨孔位：左轨 U 号，右轨 mm
+  let leftHTML = '', rightHTML = '';
   for (let u = 1; u <= state.rackHeight; u++) {
-    railHTML += `<div class="rail-hole" style="height:${uh}px"><span class="hole-number">${u}</span></div>`;
+    const mm = getMmFromFloor(u, state.rackHeight);
+    leftHTML += `<div class="rail-hole" style="height:${uh}px"><span class="hole-number">${u}</span></div>`;
+    rightHTML += `<div class="rail-hole" style="height:${uh}px"><span class="hole-number hole-mm">${mm}</span></div>`;
   }
-  $leftRail.innerHTML = railHTML;
-  $rightRail.innerHTML = railHTML;
+  $leftRail.innerHTML = leftHTML;
+  $rightRail.innerHTML = rightHTML;
 
   // 渲染U槽位（drop targets）
   let slotsHTML = '';
@@ -807,6 +851,12 @@ function renderRack() {
 
   // 渲染设备块（在 slots 之后，确保 z-index 覆盖在上面）
   state.devices.forEach(dev => renderDeviceBlock(dev));
+
+  // 更新机柜区标题
+  const headerEl = document.getElementById('rackAreaHeader');
+  if (headerEl) {
+    headerEl.textContent = `📐 ${state.rackHeight}U 机柜 / ${getRackTotalMm(state.rackHeight)}mm — 拖拽设备到机柜上`;
+  }
 
   renderDeviceList();
   updateStats();
@@ -1081,7 +1131,7 @@ function addDevice(uPos, uSize) {
 }
 
 function getDefaultName(size) {
-  const names = { 1: '1U设备', 2: '2U设备', 3: '3U设备', 4: '4U设备' };
+  const names = { 1: '1U设备', 2: '2U设备', 3: '3U设备', 4: '4U设备', 6: '6U设备', 8: '8U设备' };
   return names[size] || `${size}U设备`;
 }
 
@@ -1380,6 +1430,9 @@ function updateStats() {
   const free = state.rackHeight - used;
   $statUsed.textContent = used;
   $statFree.textContent = free;
+  // 更新机柜总高 mm 显示
+  const mmEl = document.getElementById('statTotalMm');
+  if (mmEl) mmEl.textContent = getRackTotalMm(state.rackHeight) + 'mm';
 }
 
 // ==================== 导出 ====================
@@ -1390,7 +1443,7 @@ function exportImage() {
     scale: 2,
   }).then(canvas => {
     const link = document.createElement('a');
-    link.download = `机柜模拟_${state.rackHeight}U_${new Date().toISOString().slice(0,10)}.png`;
+    link.download = `机柜模拟_${state.rackHeight}U_${getRackTotalMm(state.rackHeight)}mm_${new Date().toISOString().slice(0,10)}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   }).catch(err => {
